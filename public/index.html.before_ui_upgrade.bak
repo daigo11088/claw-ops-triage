@@ -1,0 +1,165 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Claw Ops Triage Playground</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; margin: 16px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; }
+    input, textarea { width: 100%; padding: 8px; margin: 6px 0; }
+    button { padding: 8px 10px; }
+    .badge { display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid #ccc; font-size:12px; }
+    .agreed { border-color: #6aa84f; }
+    .small { font-size: 12px; color: #555; }
+    img { max-width: 100%; border-radius: 10px; margin-top: 8px; }
+    pre { white-space: pre-wrap; word-break: break-word; background: #f7f7f7; padding: 8px; border-radius: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Claw Ops Triage Playground</h1>
+  <p class="small">Humans add an issue with an uploaded image. Agents negotiate via API. Watch the feed.</p>
+
+  <div class="grid">
+    <div class="card">
+      <h2>New Issue (human)</h2>
+      <input id="title" placeholder="Title e.g., Ceiling leak near MEP riser" />
+      <textarea id="context" rows="4" placeholder="Context (2-5 lines)"></textarea>
+
+      <input id="image_file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" />
+      <div class="small">Upload jpg/png/webp/gif (max 10MB)</div>
+
+      <button onclick="createIssue()">Create</button>
+      <div id="createResult" class="small"></div>
+    </div>
+
+    <div class="card">
+      <h2>Issues</h2>
+      <button onclick="loadIssues()">Refresh</button>
+      <div id="issues"></div>
+    </div>
+  </div>
+
+  <div class="grid" style="margin-top:16px;">
+    <div class="card">
+      <h2>Issue Detail</h2>
+      <div id="detail" class="small">Select an issue from the list.</div>
+    </div>
+
+    <div class="card">
+      <h2>Live Feed</h2>
+      <button onclick="loadFeed()">Refresh</button>
+      <div id="feed"></div>
+    </div>
+  </div>
+
+<script>
+const api = "";
+
+async function createIssue() {
+  const title = document.getElementById("title").value;
+  const context = document.getElementById("context").value;
+  const fileEl = document.getElementById("image_file");
+
+  let image_url = null;
+
+  // upload image if selected
+  if (fileEl.files && fileEl.files[0]) {
+    const fd = new FormData();
+    fd.append("image", fileEl.files[0]);
+
+    const upRes = await fetch(api + "/api/uploads", { method: "POST", body: fd });
+    const upData = await upRes.json();
+
+    if (!upRes.ok) {
+      document.getElementById("createResult").textContent = `Upload error: ${upData.error || "failed"}`;
+      return;
+    }
+    image_url = upData.url; // /uploads/xxx.jpg
+  }
+
+  const res = await fetch(api + "/api/issues", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title, context, image_url })
+  });
+
+  const data = await res.json();
+  document.getElementById("createResult").textContent = res.ok ? `Created issue #${data.id}` : `Error: ${data.error}`;
+  await loadIssues();
+  await loadFeed();
+}
+
+async function loadIssues() {
+  const res = await fetch(api + "/api/issues");
+  const data = await res.json();
+  const el = document.getElementById("issues");
+  el.innerHTML = "";
+  data.forEach(it => {
+    const div = document.createElement("div");
+    div.className = "card " + (it.status === "agreed" ? "agreed" : "");
+    div.style.marginTop = "8px";
+    const badge = it.status === "agreed" ? `<span class="badge">AGREED</span>` : `<span class="badge">${it.status}</span>`;
+    div.innerHTML = `
+      <div><b>#${it.id}</b> ${it.title} ${badge}</div>
+      <div class="small">${it.context}</div>
+      <div class="small">Agreed by: ${(it.agreed_by || []).join(", ") || "-"}</div>
+      <button style="margin-top:6px" onclick="showDetail(${it.id})">Open</button>
+    `;
+    el.appendChild(div);
+  });
+}
+
+async function showDetail(id) {
+  const res = await fetch(api + "/api/issues/" + id);
+  const data = await res.json();
+  const d = document.getElementById("detail");
+  const issue = data.issue;
+  const proposals = data.proposals;
+
+  let html = `<div><b>#${issue.id}</b> ${issue.title} <span class="badge">${issue.status}</span></div>
+  <div class="small">${issue.context}</div>`;
+
+  if (issue.image_url) {
+    html += `<img src="${issue.image_url}" alt="issue image"/>`;
+    html += `<div class="small">image: ${issue.image_url}</div>`;
+  } else {
+    html += `<div class="small">No image uploaded.</div>`;
+  }
+
+  html += `<h3>Proposals</h3>`;
+  if (proposals.length === 0) html += `<div class="small">No proposals yet.</div>`;
+  proposals.forEach(p => {
+    html += `
+      <div class="card" style="margin-top:8px;">
+        <div><b>${p.agent_id}</b> <span class="badge">${p.kind}</span> <span class="small">${p.created_at}</span></div>
+        <div class="small">${p.message}</div>
+        <pre>${p.decision_json}</pre>
+      </div>
+    `;
+  });
+
+  d.innerHTML = html;
+}
+
+async function loadFeed() {
+  const res = await fetch(api + "/api/feed");
+  const data = await res.json();
+  const el = document.getElementById("feed");
+  el.innerHTML = "";
+  data.slice(0, 50).forEach(f => {
+    const div = document.createElement("div");
+    div.className = "small";
+    div.style.borderBottom = "1px solid #eee";
+    div.style.padding = "6px 0";
+    div.textContent = `[${f.created_at}] (${f.type}) issue:${f.issue_id ?? "-"} agent:${f.agent_id ?? "-"} :: ${f.text}`;
+    el.appendChild(div);
+  });
+}
+
+loadIssues();
+loadFeed();
+</script>
+</body>
+</html>

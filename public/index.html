@@ -1,0 +1,800 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Claw Ops Triage Playground</title>
+  <style>
+    :root{
+      --bg:#0b0f14;
+      --panel:#101826;
+      --panel2:#0f1622;
+      --line:#1f2a3a;
+      --muted:#9fb0c7;
+      --text:#e6f0ff;
+      --accent:#55ffb0;
+      --accent2:#44a4ff;
+      --warn:#ffcc66;
+      --bad:#ff5c7a;
+      --good:#55ffb0;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 14px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: radial-gradient(1200px 700px at 10% 0%, rgba(68,164,255,.15), transparent 60%),
+                  radial-gradient(900px 600px at 80% 10%, rgba(85,255,176,.12), transparent 55%),
+                  var(--bg);
+      color:var(--text);
+    }
+    header{
+      position: sticky; top:0; z-index:10;
+      backdrop-filter: blur(10px);
+      background: rgba(11,15,20,.65);
+      border-bottom:1px solid var(--line);
+    }
+    .wrap{max-width: 1240px; margin:0 auto; padding:14px 16px;}
+    .topbar{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+    }
+    .title{
+      display:flex; align-items:center; gap:10px; min-width: 240px;
+    }
+    .logo{
+      width:28px; height:28px; border-radius:8px;
+      background: linear-gradient(135deg, rgba(85,255,176,.95), rgba(68,164,255,.95));
+      box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 12px 24px rgba(68,164,255,.15);
+    }
+    h1{font-size:18px; margin:0; letter-spacing:.4px}
+    .subtitle{font-size:12px; color:var(--muted); margin-top:2px}
+    .controls{
+      display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end;
+    }
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      border:1px solid var(--line);
+      background: linear-gradient(180deg, rgba(16,24,38,.9), rgba(15,22,34,.9));
+      padding:8px 10px;
+      border-radius: 999px;
+      box-shadow: var(--shadow);
+      font-size:12px; color:var(--muted);
+    }
+    .dot{width:8px; height:8px; border-radius:999px; background: var(--good); box-shadow: 0 0 12px rgba(85,255,176,.5);}
+    button, .btn{
+      cursor:pointer;
+      border:1px solid var(--line);
+      background: linear-gradient(180deg, rgba(16,24,38,.95), rgba(15,22,34,.95));
+      color:var(--text);
+      border-radius: 10px;
+      padding:9px 10px;
+      font-size:12px;
+    }
+    button:hover{border-color: rgba(85,255,176,.45)}
+    button:active{transform: translateY(1px)}
+    .btn-ghost{background: transparent}
+    .btn-accent{
+      border-color: rgba(85,255,176,.35);
+      box-shadow: 0 0 0 1px rgba(85,255,176,.12) inset, 0 16px 30px rgba(85,255,176,.06);
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap:12px;
+      padding:12px 16px 16px;
+      max-width:1240px;
+      margin:0 auto;
+    }
+    .col{
+      display:grid;
+      grid-template-rows: 1fr 1fr;
+      gap:12px;
+      min-height: calc(100vh - 84px);
+    }
+    .card{
+      background: linear-gradient(180deg, rgba(16,24,38,.92), rgba(12,18,28,.92));
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      min-height: 0;
+    }
+    .card-h{
+      padding:10px 12px;
+      border-bottom:1px solid var(--line);
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+    }
+    .card-h h2{
+      margin:0;
+      font-size:13px;
+      letter-spacing:.4px;
+      text-transform: uppercase;
+      color: rgba(230,240,255,.9);
+    }
+    .card-h .right{display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end}
+    .card-b{
+      padding:10px 12px;
+      overflow:auto;
+      min-height:0;
+    }
+    .small{font-size:12px; color:var(--muted)}
+    .mono{font-family: var(--mono)}
+    .row{display:flex; gap:10px}
+    .row > *{flex:1}
+    input, textarea, select{
+      width:100%;
+      background: rgba(7,11,16,.65);
+      border:1px solid var(--line);
+      color:var(--text);
+      border-radius: 10px;
+      padding:10px 10px;
+      font-size:13px;
+      outline:none;
+    }
+    textarea{resize: vertical; min-height: 96px}
+    input:focus, textarea:focus, select:focus{border-color: rgba(68,164,255,.55); box-shadow: 0 0 0 2px rgba(68,164,255,.12)}
+    .hint{font-size:11px; color:var(--muted); margin-top:6px}
+    .badge{
+      display:inline-flex; align-items:center; gap:6px;
+      padding:4px 8px;
+      border-radius: 999px;
+      font-size:11px;
+      border:1px solid var(--line);
+      color: var(--muted);
+      background: rgba(7,11,16,.35);
+    }
+    .badge.good{border-color: rgba(85,255,176,.35); color: rgba(85,255,176,.95)}
+    .badge.warn{border-color: rgba(255,204,102,.35); color: rgba(255,204,102,.95)}
+    .badge.bad{border-color: rgba(255,92,122,.35); color: rgba(255,92,122,.95)}
+    .agentCard{
+      border:1px solid var(--line);
+      border-radius: 12px;
+      padding:10px;
+      background: rgba(7,11,16,.35);
+      display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
+    }
+    .agentName{font-weight:650; letter-spacing:.2px}
+    .agentMeta{display:flex; gap:6px; align-items:center; flex-wrap:wrap}
+    .agentId{font-family: var(--mono); font-size:12px; color: rgba(230,240,255,.75)}
+    .split{
+      display:flex; gap:10px; flex-wrap:wrap;
+    }
+    .split > .agentCard{flex:1; min-width: 240px}
+    .list{
+      display:flex; flex-direction:column; gap:10px;
+    }
+    .issueCard{
+      border:1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(7,11,16,.35);
+      padding:10px;
+      display:flex;
+      gap:10px;
+      justify-content:space-between;
+      align-items:flex-start;
+    }
+    .issueCard:hover{border-color: rgba(68,164,255,.35)}
+    .issueMain{flex:1; min-width:0}
+    .issueTitle{font-weight:650}
+    .issueCtx{margin-top:6px; font-size:12px; color:var(--muted); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
+    .issueRight{display:flex; flex-direction:column; gap:8px; align-items:flex-end}
+    .scrollMask{
+      position:relative;
+    }
+    .scrollMask:after{
+      content:"";
+      position:absolute; left:0; right:0; bottom:0;
+      height:28px;
+      background: linear-gradient(180deg, transparent, rgba(12,18,28,.92));
+      pointer-events:none;
+      display:none;
+    }
+    .scrollMask.mask:after{display:block;}
+    .img{
+      width:100%;
+      border-radius: 12px;
+      border:1px solid rgba(255,255,255,.06);
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+      cursor: zoom-in;
+    }
+    .pre{
+      font-family: var(--mono);
+      font-size:12px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: rgba(7,11,16,.55);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:10px;
+      color: rgba(230,240,255,.85);
+    }
+    .proposal{
+      border:1px solid var(--line);
+      border-radius: 12px;
+      padding:10px;
+      background: rgba(7,11,16,.35);
+    }
+    .proposalTop{
+      display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+    }
+    .proposalMsg{margin-top:8px; color: rgba(230,240,255,.9); font-size:13px}
+    .proposalMeta{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+    .kv{font-family: var(--mono); font-size:11px; color: var(--muted)}
+    .toggleRow{
+      display:flex; gap:8px; align-items:center;
+    }
+    .switch{
+      display:inline-flex; align-items:center; gap:8px;
+      cursor:pointer;
+      user-select:none;
+      font-size:12px;
+      color: var(--muted);
+    }
+    .switch input{display:none}
+    .track{
+      width:40px; height:22px; border-radius: 999px;
+      border:1px solid var(--line);
+      background: rgba(7,11,16,.55);
+      position:relative;
+    }
+    .knob{
+      width:18px; height:18px; border-radius:999px;
+      background: rgba(230,240,255,.75);
+      position:absolute; top:1.5px; left:2px;
+      transition: all .15s ease;
+    }
+    .switch input:checked + .track{border-color: rgba(85,255,176,.35)}
+    .switch input:checked + .track .knob{left: 19px; background: rgba(85,255,176,.95); box-shadow: 0 0 12px rgba(85,255,176,.35)}
+    .modal{
+      position:fixed; inset:0;
+      background: rgba(0,0,0,.7);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
+      z-index:50;
+    }
+    .modal.show{display:flex;}
+    .modalInner{
+      max-width: 980px;
+      width: 100%;
+      background: rgba(11,15,20,.9);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius: 16px;
+      padding: 12px;
+      box-shadow: 0 30px 70px rgba(0,0,0,.55);
+    }
+    .modalTop{display:flex; justify-content:space-between; align-items:center; gap:10px; padding: 4px 6px 10px;}
+    .x{font-family: var(--mono); padding:8px 10px}
+    .footnote{font-size:11px; color: var(--muted); margin-top:6px}
+    @media (max-width: 980px){
+      .grid{grid-template-columns: 1fr;}
+      .col{min-height:auto}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="topbar">
+        <div class="title">
+          <div class="logo"></div>
+          <div>
+            <h1>Claw Ops Triage Playground</h1>
+            <div class="subtitle">one-screen cockpit · role-based negotiation · live telemetry</div>
+          </div>
+        </div>
+        <div class="controls">
+          <span class="pill"><span class="dot" id="apiDot"></span><span class="mono" id="apiStatus">API: checking…</span></span>
+
+          <label class="switch" title="Auto refresh feed and issue data">
+            <input id="autoSwitch" type="checkbox" checked>
+            <span class="track"><span class="knob"></span></span>
+            Auto
+          </label>
+
+          <button class="btn btn-ghost" onclick="manualRefresh()">Refresh</button>
+          <button class="btn btn-accent" onclick="focusLatestOpen()">Focus latest open</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="grid">
+    <!-- LEFT COLUMN -->
+    <div class="col">
+      <!-- New Issue -->
+      <div class="card">
+        <div class="card-h">
+          <h2>New Issue</h2>
+          <div class="right">
+            <span class="badge warn">human upload</span>
+            <span class="badge">jpg/png/webp/gif</span>
+          </div>
+        </div>
+        <div class="card-b">
+          <div class="row">
+            <div>
+              <div class="small">Title</div>
+              <input id="title" placeholder="e.g., Water leak at a closet meter joint" />
+            </div>
+            <div>
+              <div class="small">Priority hint</div>
+              <select id="prioHint">
+                <option value="P0">P0 (urgent)</option>
+                <option value="P1">P1 (soon)</option>
+                <option value="P2" selected>P2 (normal)</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="margin-top:10px">
+            <div class="small">Context (2–5 lines)</div>
+            <textarea id="context" placeholder="Describe what happened, where, risks, constraints…"></textarea>
+          </div>
+
+          <div style="margin-top:10px" class="row">
+            <div>
+              <div class="small">Image</div>
+              <input id="image_file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" />
+              <div class="hint">Upload is stored at <span class="mono">/uploads/...</span> (demo-friendly)</div>
+            </div>
+            <div>
+              <div class="small">Create</div>
+              <button class="btn btn-accent" style="width:100%; height:42px" onclick="createIssue()">Create Issue</button>
+              <div id="createResult" class="footnote"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Issue Detail -->
+      <div class="card">
+        <div class="card-h">
+          <h2>Issue Detail</h2>
+          <div class="right">
+            <span class="badge" id="selectedBadge">no issue</span>
+            <button class="btn btn-ghost" onclick="toggle('detailHistory')">Toggle history</button>
+          </div>
+        </div>
+        <div class="card-b" id="detail">
+          <div class="small">Select an issue from the right panel, or click “Focus latest open”.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="col">
+      <!-- Issues + Agents -->
+      <div class="card">
+        <div class="card-h">
+          <h2>Issues & Agents</h2>
+          <div class="right">
+            <button class="btn btn-ghost" onclick="toggle('olderIssues')">Show/Hide past</button>
+          </div>
+        </div>
+        <div class="card-b">
+          <div class="small" style="margin-bottom:8px">Agents (role shown per selected issue)</div>
+          <div class="split" id="agentsBox">
+            <div class="agentCard">
+              <div>
+                <div class="agentName">AgentA</div>
+                <div class="agentId">agent_id: <span class="mono">AgentA</span></div>
+              </div>
+              <div class="agentMeta">
+                <span class="badge" id="roleA">role: —</span>
+              </div>
+            </div>
+            <div class="agentCard">
+              <div>
+                <div class="agentName">AgentB</div>
+                <div class="agentId">agent_id: <span class="mono">AgentB</span></div>
+              </div>
+              <div class="agentMeta">
+                <span class="badge" id="roleB">role: —</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="height:10px"></div>
+
+          <div class="small">Open issues (top 5)</div>
+          <div class="list" id="openIssues"></div>
+
+          <div id="olderIssues" style="display:none; margin-top:12px">
+            <div class="small">Past / agreed issues (collapsed)</div>
+            <div class="list" id="pastIssues" style="margin-top:8px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Feed -->
+      <div class="card">
+        <div class="card-h">
+          <h2>Live Feed</h2>
+          <div class="right">
+            <span class="badge" id="feedMode">live</span>
+            <button class="btn btn-ghost" onclick="toggle('olderFeed')">Show/Hide older</button>
+          </div>
+        </div>
+        <div class="card-b">
+          <div class="toggleRow" style="margin-bottom:10px">
+            <span class="small">Streaming latest events (auto refresh)</span>
+          </div>
+
+          <div class="scrollMask mask" id="feedBox" style="max-height: 270px; overflow:auto; padding-right:4px;"></div>
+
+          <div id="olderFeed" style="display:none; margin-top:12px">
+            <div class="small">Older feed (last 200)</div>
+            <div class="scrollMask mask" id="feedAll" style="max-height: 250px; overflow:auto; margin-top:8px; padding-right:4px;"></div>
+          </div>
+
+          <div class="footnote" id="feedHint"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="imgModal" onclick="closeModal(event)">
+    <div class="modalInner">
+      <div class="modalTop">
+        <div class="small mono" id="modalUrl">image</div>
+        <button class="x btn btn-ghost" onclick="closeModal(event)">close</button>
+      </div>
+      <img id="modalImg" class="img" style="cursor:default" />
+    </div>
+  </div>
+
+<script>
+const api = "";
+let selectedIssueId = null;
+let lastFeedId = null;
+let autoTimer = null;
+
+function $(id){ return document.getElementById(id); }
+
+function toggle(id){
+  const el = $(id);
+  el.style.display = (el.style.display === "none" || !el.style.display) ? "block" : "none";
+}
+
+async function apiHealth(){
+  try{
+    const r = await fetch(api + "/api/health");
+    const ok = r.ok;
+    $("apiDot").style.background = ok ? "var(--good)" : "var(--bad)";
+    $("apiStatus").textContent = ok ? "API: OK" : "API: error";
+    if(ok) $("apiDot").style.boxShadow = "0 0 12px rgba(85,255,176,.5)";
+    return ok;
+  }catch(e){
+    $("apiDot").style.background = "var(--bad)";
+    $("apiStatus").textContent = "API: offline";
+    return false;
+  }
+}
+
+async function createIssue(){
+  const title = $("title").value.trim();
+  const context = $("context").value.trim();
+  const fileEl = $("image_file");
+  if(!title || !context){
+    $("createResult").textContent = "Title and context are required.";
+    return;
+  }
+
+  let image_url = null;
+
+  if(fileEl.files && fileEl.files[0]){
+    const fd = new FormData();
+    fd.append("image", fileEl.files[0]);
+    const upRes = await fetch(api + "/api/uploads", { method:"POST", body: fd });
+    const upData = await upRes.json();
+    if(!upRes.ok){
+      $("createResult").textContent = "Upload error: " + (upData.error || "failed");
+      return;
+    }
+    image_url = upData.url;
+  }
+
+  const res = await fetch(api + "/api/issues", {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ title, context, image_url })
+  });
+
+  const data = await res.json();
+  $("createResult").textContent = res.ok ? `Created issue #${data.id}` : `Error: ${data.error}`;
+  await manualRefresh();
+  if(res.ok){
+    selectIssue(data.id);
+  }
+}
+
+function issueBadge(status){
+  if(status === "agreed") return `<span class="badge good">AGREED</span>`;
+  return `<span class="badge warn">OPEN</span>`;
+}
+
+async function loadIssues(){
+  const res = await fetch(api + "/api/issues");
+  const issues = await res.json();
+
+  const open = issues.filter(x => x.status !== "agreed").slice(0, 5);
+  const past = issues.filter(x => x.status === "agreed").slice(0, 10);
+
+  $("openIssues").innerHTML = open.length ? "" : `<div class="small">No open issues. Create one on the left.</div>`;
+  open.forEach(it => $("openIssues").appendChild(renderIssueCard(it)));
+
+  $("pastIssues").innerHTML = past.length ? "" : `<div class="small">No past issues yet.</div>`;
+  past.forEach(it => $("pastIssues").appendChild(renderIssueCard(it)));
+}
+
+function renderIssueCard(it){
+  const wrap = document.createElement("div");
+  wrap.className = "issueCard";
+  wrap.innerHTML = `
+    <div class="issueMain">
+      <div class="issueTitle">#${it.id} · ${escapeHtml(it.title)} ${issueBadge(it.status)}</div>
+      <div class="issueCtx">${escapeHtml(it.context || "")}</div>
+      <div class="small" style="margin-top:6px">Agreed by: ${escapeHtml((it.agreed_by || []).join(", ") || "-")}</div>
+    </div>
+    <div class="issueRight">
+      <button class="btn btn-ghost" onclick="selectIssue(${it.id})">Open</button>
+    </div>
+  `;
+  return wrap;
+}
+
+async function selectIssue(id){
+  selectedIssueId = id;
+  $("selectedBadge").textContent = `#${id}`;
+  await showDetail(id);
+  await loadRolesForSelected(id);
+}
+
+async function loadRolesForSelected(id){
+  try{
+    const r = await fetch(api + `/api/issues/${id}/roles`);
+    if(!r.ok) throw new Error("no roles");
+    const rows = await r.json();
+    const a = rows.find(x => x.agent_id === "AgentA")?.role || "—";
+    const b = rows.find(x => x.agent_id === "AgentB")?.role || "—";
+    setRoleBadge("roleA", a);
+    setRoleBadge("roleB", b);
+  }catch(e){
+    setRoleBadge("roleA", "—");
+    setRoleBadge("roleB", "—");
+  }
+}
+
+function setRoleBadge(elId, role){
+  const el = $(elId);
+  el.className = "badge";
+  if(role === "Lead") el.className = "badge good";
+  if(role === "Reviewer") el.className = "badge warn";
+  el.textContent = `role: ${role}`;
+}
+
+async function showDetail(id){
+  const res = await fetch(api + `/api/issues/${id}`);
+  const data = await res.json();
+  const issue = data.issue;
+  const proposals = data.proposals || [];
+
+  const top = document.createElement("div");
+  top.innerHTML = `
+    <div class="proposalTop">
+      <div class="proposalMeta">
+        <span class="badge">${escapeHtml(issue.status)}</span>
+        <span class="kv">created: ${escapeHtml(issue.created_at)}</span>
+      </div>
+      <div class="proposalMeta">
+        <span class="kv mono">image_url: ${escapeHtml(issue.image_url || "—")}</span>
+      </div>
+    </div>
+    <div style="margin-top:8px">
+      <div class="issueTitle">#${issue.id} · ${escapeHtml(issue.title)}</div>
+      <div class="small" style="margin-top:6px">${escapeHtml(issue.context || "")}</div>
+    </div>
+  `;
+
+  const container = document.createElement("div");
+  container.appendChild(top);
+
+  if(issue.image_url){
+    const imgUrl = issue.image_url.startsWith("http") ? issue.image_url : (api + issue.image_url);
+    const img = document.createElement("img");
+    img.className = "img";
+    img.src = imgUrl;
+    img.alt = "issue image";
+    img.onclick = () => openModal(imgUrl);
+    container.appendChild(spacer(10));
+    container.appendChild(img);
+  }
+
+  container.appendChild(spacer(10));
+
+  const latest = proposals.length ? proposals[proposals.length - 1] : null;
+  const latestBox = document.createElement("div");
+  latestBox.className = "proposal";
+  latestBox.innerHTML = latest
+    ? `<div class="proposalTop">
+         <div class="proposalMeta">
+           <span class="badge ${latest.kind === "counter" ? "warn" : ""}">${escapeHtml(latest.kind)}</span>
+           <span class="badge">${escapeHtml(latest.agent_id)}</span>
+           <span class="kv">proposal_id: ${latest.id}</span>
+           <span class="kv">time: ${escapeHtml(latest.created_at)}</span>
+         </div>
+         <div class="proposalMeta"><span class="badge good">latest</span></div>
+       </div>
+       <div class="proposalMsg">${escapeHtml(latest.message || "")}</div>
+       <div style="margin-top:10px" class="pre">${escapeHtml(latest.decision_json || "")}</div>`
+    : `<div class="small">No proposals yet.</div>`;
+
+  container.appendChild(latestBox);
+
+  // History (collapsed by default)
+  const hist = document.createElement("div");
+  hist.id = "detailHistory";
+  hist.style.display = "none";
+  hist.style.marginTop = "10px";
+  hist.innerHTML = `<div class="small">Proposal history (${proposals.length})</div>`;
+
+  const list = document.createElement("div");
+  list.className = "list";
+  list.style.marginTop = "8px";
+
+  proposals.slice().reverse().forEach(p => {
+    const el = document.createElement("div");
+    el.className = "proposal";
+    el.innerHTML = `
+      <div class="proposalTop">
+        <div class="proposalMeta">
+          <span class="badge ${p.kind === "counter" ? "warn" : ""}">${escapeHtml(p.kind)}</span>
+          <span class="badge">${escapeHtml(p.agent_id)}</span>
+          <span class="kv">proposal_id: ${p.id}</span>
+          <span class="kv">time: ${escapeHtml(p.created_at)}</span>
+        </div>
+      </div>
+      <div class="proposalMsg">${escapeHtml(p.message || "")}</div>
+      <div style="margin-top:10px" class="pre">${escapeHtml(p.decision_json || "")}</div>
+    `;
+    list.appendChild(el);
+  });
+
+  hist.appendChild(list);
+  container.appendChild(hist);
+
+  $("detail").innerHTML = "";
+  $("detail").appendChild(container);
+}
+
+function spacer(px){
+  const d = document.createElement("div");
+  d.style.height = px + "px";
+  return d;
+}
+
+async function loadFeed(full=false){
+  const res = await fetch(api + "/api/feed");
+  const rows = await res.json();
+  if(!Array.isArray(rows)) return;
+
+  // newest first in API; we want newest first visually as well
+  const latest = rows.slice(0, 25);
+  const all = rows.slice(0, 200);
+
+  renderFeedBox("feedBox", latest);
+  if(full) renderFeedBox("feedAll", all);
+
+  const newestId = latest.length ? latest[0].id : null;
+  if(lastFeedId && newestId && newestId !== lastFeedId){
+    $("feedHint").textContent = `new events received`;
+  } else {
+    $("feedHint").textContent = ``;
+  }
+  lastFeedId = newestId;
+}
+
+function iconFor(type){
+  if(type === "system") return "✓";
+  if(type === "agree") return "✔";
+  if(type === "proposal") return "»";
+  if(type === "issue") return "+";
+  return "•";
+}
+
+function renderFeedBox(elId, rows){
+  const el = $(elId);
+  el.innerHTML = "";
+  rows.forEach(f => {
+    const line = document.createElement("div");
+    line.style.borderBottom = "1px solid rgba(31,42,58,.7)";
+    line.style.padding = "8px 2px";
+    const t = escapeHtml(f.created_at || "");
+    const type = escapeHtml(f.type || "");
+    const issueId = (f.issue_id ?? "-");
+    const agent = escapeHtml(f.agent_id || "-");
+    const text = escapeHtml(f.text || "");
+    const icon = iconFor(f.type);
+    line.innerHTML = `
+      <div class="small mono">
+        <span style="color:rgba(85,255,176,.9)">${icon}</span>
+        [${t}] (${type}) issue:${issueId} agent:${agent}
+      </div>
+      <div style="margin-top:4px; font-size:13px; color:rgba(230,240,255,.9)">${text}</div>
+    `;
+    el.appendChild(line);
+  });
+}
+
+function escapeHtml(s){
+  return String(s)
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+
+async function focusLatestOpen(){
+  const res = await fetch(api + "/api/issues");
+  const issues = await res.json();
+  const open = issues.find(x => x.status !== "agreed");
+  if(open) selectIssue(open.id);
+}
+
+async function manualRefresh(){
+  await apiHealth();
+  await loadIssues();
+  await loadFeed($("olderFeed").style.display === "block");
+  if(selectedIssueId) {
+    await showDetail(selectedIssueId);
+    await loadRolesForSelected(selectedIssueId);
+  }
+}
+
+function openModal(url){
+  $("modalImg").src = url;
+  $("modalUrl").textContent = url;
+  $("imgModal").classList.add("show");
+}
+function closeModal(e){
+  if(e && e.target && (e.target.id === "modalImg")) return;
+  $("imgModal").classList.remove("show");
+}
+
+function startAuto(){
+  stopAuto();
+  autoTimer = setInterval(async () => {
+    if(!$("autoSwitch").checked) return;
+    await loadFeed($("olderFeed").style.display === "block");
+    await loadIssues();
+    if(selectedIssueId){
+      await loadRolesForSelected(selectedIssueId);
+    }
+  }, 1500);
+}
+function stopAuto(){
+  if(autoTimer) clearInterval(autoTimer);
+  autoTimer = null;
+}
+
+$("autoSwitch").addEventListener("change", () => {
+  if($("autoSwitch").checked) $("feedMode").textContent = "live";
+  else $("feedMode").textContent = "paused";
+});
+
+(async function init(){
+  await apiHealth();
+  await loadIssues();
+  await loadFeed(false);
+  startAuto();
+})();
+</script>
+</body>
+</html>
