@@ -275,7 +275,26 @@ B<!doctype html>
       .grid{grid-template-columns: 1fr;}
       .col{min-height:auto}
     }
-  </style>
+/* --- One-screen layout tuning --- */
+:root{ --topMax: 46vh; }
+
+.col{ grid-template-rows: var(--topMax) 1fr; }
+
+.card{
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-h{ flex: 0 0 auto; }
+.card-b{
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+ </style>
 </head>
 <body>
   <header>
