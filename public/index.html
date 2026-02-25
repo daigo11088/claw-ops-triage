@@ -1,4 +1,4 @@
-<!doctype html>
+B<!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
@@ -400,6 +400,38 @@
             </div>
           </div>
 
+<div style="height:10px"></div>
+<div class="small">Quick join (selected issue required)</div>
+<div class="row" style="margin-top:8px">
+  <div>
+    <div class="small">Agent A id</div>
+    <input id="agentAId" value="AgentA" />
+    <button class="btn btn-accent" style="width:100%; margin-top:8px" onclick="joinSelected('A')">Join as A</button>
+  </div>
+  <div>
+    <div class="small">Agent B id</div>
+    <input id="agentBId" value="AgentB" />
+    <button class="btn btn-accent" style="width:100%; margin-top:8px" onclick="joinSelected('B')">Join as B</button>
+  </div>
+</div>
+<div class="footnote" id="joinResult"></div>
+
+　　<div style="height:10px"></div>　
+　　<div class="small">Quick join (selected issue required)</div>
+　　<div class="row" style="margin-top:8px">
+  　　<div>
+    　　<div class="small">Agent A id</div>
+    　　<input id="agentAId" value="AgentA" />
+    　　<button class="btn btn-accent" style="width:100%; margin-top:8px" onclick="joinSelected('A')">Join as A</button>
+  　　</div>
+  　　<div>
+    　　<div class="small">Agent B id</div>
+    　　<input id="agentBId" value="AgentB" />
+    　　<button class="btn btn-accent" style="width:100%; margin-top:8px" onclick="joinSelected('B')">Join as B</button>
+  　　</div>
+　　</div>
+　　<div class="footnote" id="joinResult"></div>
+
           <div style="height:10px"></div>
 
           <div class="small">Open issues (top 5)</div>
@@ -756,6 +788,34 @@ async function manualRefresh(){
     await showDetail(selectedIssueId);
     await loadRolesForSelected(selectedIssueId);
   }
+}
+
+async function joinSelected(which){
+  if(!selectedIssueId){
+    $("joinResult").textContent = "Select an issue first (Open an issue on the right).";
+    return;
+  }
+  const agentId = which === "A" ? $("agentAId").value.trim() : $("agentBId").value.trim();
+  if(!agentId){
+    $("joinResult").textContent = "Agent id is empty.";
+    return;
+  }
+  $("joinResult").textContent = `Joining issue #${selectedIssueId} as ${agentId}...`;
+
+  const r = await fetch(api + `/api/issues/${selectedIssueId}/join`, {
+    method: "POST",
+    headers: { "Content-Type":"application/json" },
+    body: JSON.stringify({ agent_id: agentId })
+  });
+  const data = await r.json();
+
+  if(!r.ok){
+    $("joinResult").textContent = `Join failed: ${data.error || "unknown error"}`;
+    return;
+  }
+
+  $("joinResult").textContent = `Joined issue #${selectedIssueId} as ${agentId} (role: ${data.role})`;
+  await loadRolesForSelected(selectedIssueId);
 }
 
 function openModal(url){
