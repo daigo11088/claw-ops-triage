@@ -1,0 +1,15 @@
+# dependencies
+node_modules/
+
+# local database / temp sqlite files
+data.db
+data.db-*
+*.db
+*.db-*
+
+# uploads (local files)
+uploads/
+
+# OS/editor
+.DS_Store
+.env
