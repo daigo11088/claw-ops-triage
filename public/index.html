@@ -637,55 +637,112 @@ function setRoleBadge(elId, role){
 }
 
 async function showDetail(id){
-  const res = await fetch(api + `/api/issues/${id}`);
-  const data = await res.json();
-  const issue = data.issue;
-  const proposals = data.proposals || [];
+  try{
+    const res = await fetch(api + `/api/issues/${id}`);
+    const data = await res.json();
+    const issue = data.issue;
+    const proposals = data.proposals || [];
 
-  const container = document.createElement("div");
+    const container = document.createElement("div");
 
-  // --- Header ---
-  const top = document.createElement("div");
-  top.innerHTML = `
-    <div class="proposalTop">
-      <div class="proposalMeta">
-        <span class="badge">${escapeHtml(issue.status)}</span>
-        <span class="kv">created: ${escapeHtml(fmtTs(issue.created_at))}</span>
+    // --- Header ---
+    const top = document.createElement("div");
+    top.innerHTML = `
+      <div class="proposalTop">
+        <div class="proposalMeta">
+          <span class="badge">${escapeHtml(issue.status)}</span>
+          <span class="kv">created: ${escapeHtml(fmtTs(issue.created_at))}</span>
+        </div>
+        <div class="proposalMeta">
+          <span class="kv mono">image_url: ${escapeHtml(issue.image_url || "—")}</span>
+        </div>
       </div>
-      <div class="proposalMeta">
-        <span class="kv mono">image_url: ${escapeHtml(issue.image_url || "—")}</span>
+      <div style="margin-top:8px">
+        <div class="issueTitle">#${issue.id} · ${escapeHtml(issue.title)}</div>
+        <div class="small" style="margin-top:6px">${escapeHtml(issue.context || "")}</div>
       </div>
-    </div>
-    <div style="margin-top:8px">
-      <div class="issueTitle">#${issue.id} · ${escapeHtml(issue.title)}</div>
-      <div class="small" style="margin-top:6px">${escapeHtml(issue.context || "")}</div>
-    </div>
-  `;
-  container.appendChild(top);
+    `;
+    container.appendChild(top);
 
-  // --- Proposals (newest first, ABOVE image) ---
-  container.appendChild(spacer(10));
-  const stack = document.createElement("div");
-  stack.innerHTML = `<div class="small">Proposals (newest first)</div>`;
-  container.appendChild(stack);
+    // --- Proposals (newest first, ABOVE image) ---
+    container.appendChild(spacer(10));
+    const stackTitle = document.createElement("div");
+    stackTitle.className = "small";
+    stackTitle.textContent = "Proposals (newest first)";
+    container.appendChild(stackTitle);
 
-  const stackList = document.createElement("div");
-  stackList.style.marginTop = "8px";
-  stackList.style.display = "flex";
-  stackList.style.flexDirection = "column";
-  stackList.style.gap = "10px";
+    const stackList = document.createElement("div");
+    stackList.style.marginTop = "8px";
+    stackList.style.display = "flex";
+    stackList.style.flexDirection = "column";
+    stackList.style.gap = "10px";
 
-  const newestFirst = proposals.slice().reverse();
-  if(newestFirst.length === 0){
-    const empty = document.createElement("div");
-    empty.className = "small";
-    empty.textContent = "No proposals yet.";
-    stackList.appendChild(empty);
-  } else {
-    newestFirst.forEach((p, idx) => {
+    const newestFirst = proposals.slice().reverse();
+    if(newestFirst.length === 0){
+      const empty = document.createElement("div");
+      empty.className = "small";
+      empty.textContent = "No proposals yet.";
+      stackList.appendChild(empty);
+    } else {
+      newestFirst.forEach((p, idx) => {
+        const el = document.createElement("div");
+        el.className = "proposal";
+        const isLatest = idx === 0;
+
+        const decision = p.decision_json ? `<div style="margin-top:10px" class="pre">${escapeHtml(p.decision_json)}</div>` : "";
+        const latestBadge = isLatest ? `<div class="proposalMeta"><span class="badge good">latest</span></div>` : "";
+
+        el.innerHTML = `
+          <div class="proposalTop">
+            <div class="proposalMeta">
+              <span class="badge ${p.kind === "counter" ? "warn" : ""}">${escapeHtml(p.kind)}</span>
+              <span class="badge">${escapeHtml(p.agent_id)}</span>
+              <span class="kv">proposal_id: ${p.id}</span>
+              <span class="kv">time: ${escapeHtml(fmtTs(p.created_at))}</span>
+            </div>
+            ${latestBadge}
+          </div>
+          <div class="proposalMsg">${escapeHtml(p.message || "")}</div>
+          ${decision}
+        `;
+        stackList.appendChild(el);
+      });
+    }
+    container.appendChild(stackList);
+
+    // --- Image (below proposals) ---
+    if(issue.image_url){
+      const imgUrl = issue.image_url.startsWith("http") ? issue.image_url : (api + issue.image_url);
+      const imgWrap = document.createElement("div");
+      imgWrap.style.marginTop = "12px";
+      imgWrap.innerHTML = `<div class="small">Image</div>`;
+
+      const img = document.createElement("img");
+      img.className = "img";
+      img.src = imgUrl;
+      img.alt = "issue image";
+      img.onclick = () => openModal(imgUrl);
+
+      imgWrap.appendChild(spacer(8));
+      imgWrap.appendChild(img);
+      container.appendChild(imgWrap);
+    }
+
+    // --- History (collapsed) ---
+    const hist = document.createElement("div");
+    hist.id = "detailHistory";
+    hist.style.display = "none";
+    hist.style.marginTop = "10px";
+    hist.innerHTML = `<div class="small">Proposal history (${proposals.length})</div>`;
+
+    const list = document.createElement("div");
+    list.className = "list";
+    list.style.marginTop = "8px";
+
+    proposals.slice().reverse().forEach(p => {
       const el = document.createElement("div");
       el.className = "proposal";
-      const isLatest = idx === 0;
+      const decision = p.decision_json ? `<div style="margin-top:10px" class="pre">${escapeHtml(p.decision_json)}</div>` : "";
       el.innerHTML = `
         <div class="proposalTop">
           <div class="proposalMeta">
@@ -694,66 +751,23 @@ async function showDetail(id){
             <span class="kv">proposal_id: ${p.id}</span>
             <span class="kv">time: ${escapeHtml(fmtTs(p.created_at))}</span>
           </div>
-          ${isLatest ? `<div class="proposalMeta"><span class="badge good">latest</span></div>` : ``}
         </div>
         <div class="proposalMsg">${escapeHtml(p.message || "")}</div>
-        ${p.decision_json ? `<div style="margin-top:10px" class="pre">${escapeHtml(p.decision_json)}</div>` : ``}
+        ${decision}
       `;
-      stackList.appendChild(el);
+      list.appendChild(el);
     });
+
+    hist.appendChild(list);
+    container.appendChild(hist);
+
+    $("detail").innerHTML = "";
+    $("detail").appendChild(container);
+
+  }catch(e){
+    console.error(e);
+    $("detail").innerHTML = `<div class="small">Detail render error: ${escapeHtml(String(e))}</div>`;
   }
-  container.appendChild(stackList);
-
-  // --- Image (below proposals) ---
-  if(issue.image_url){
-    const imgUrl = issue.image_url.startsWith("http") ? issue.image_url : (api + issue.image_url);
-    const imgWrap = document.createElement("div");
-    imgWrap.style.marginTop = "12px";
-    imgWrap.innerHTML = `<div class="small">Image</div>`;
-    const img = document.createElement("img");
-    img.className = "img";
-    img.src = imgUrl;
-    img.alt = "issue image";
-    img.onclick = () => openModal(imgUrl);
-    imgWrap.appendChild(spacer(8));
-    imgWrap.appendChild(img);
-    container.appendChild(imgWrap);
-  }
-
-  // --- History (collapsed) ---
-  const hist = document.createElement("div");
-  hist.id = "detailHistory";
-  hist.style.display = "none";
-  hist.style.marginTop = "10px";
-  hist.innerHTML = `<div class="small">Proposal history (${proposals.length})</div>`;
-
-  const list = document.createElement("div");
-  list.className = "list";
-  list.style.marginTop = "8px";
-
-  proposals.slice().reverse().forEach(p => {
-    const el = document.createElement("div");
-    el.className = "proposal";
-    el.innerHTML = `
-      <div class="proposalTop">
-        <div class="proposalMeta">
-          <span class="badge ${p.kind === "counter" ? "warn" : ""}">${escapeHtml(p.kind)}</span>
-          <span class="badge">${escapeHtml(p.agent_id)}</span>
-          <span class="kv">proposal_id: ${p.id}</span>
-          <span class="kv">time: ${escapeHtml(fmtTs(p.created_at))}</span>
-        </div>
-      </div>
-      <div class="proposalMsg">${escapeHtml(p.message || "")}</div>
-      ${p.decision_json ? `<div style="margin-top:10px" class="pre">${escapeHtml(p.decision_json)}</div>` : ``}
-    `;
-    list.appendChild(el);
-  });
-
-  hist.appendChild(list);
-  container.appendChild(hist);
-
-  $("detail").innerHTML = "";
-  $("detail").appendChild(container);
 }
 
 async function loadFeed(full=false){
