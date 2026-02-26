@@ -601,7 +601,15 @@ function renderIssueCard(it){
 async function selectIssue(id){
   selectedIssueId = id;
   $("selectedBadge").textContent = `#${id}`;
-  await showDetail(id);
+
+  try{
+    await showDetail(id);
+  }catch(e){
+    console.error(e);
+    $("detail").innerHTML =
+      `<div class="small">Detail render error: ${escapeHtml(String(e))}</div>`;
+  }
+
   await loadRolesForSelected(id);
 }
 
