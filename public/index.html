@@ -1,4 +1,4 @@
-B<!doctype html>
+<!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
@@ -492,6 +492,20 @@ let autoTimer = null;
 
 function $(id){ return document.getElementById(id); }
 
+function fmtTs(iso){
+  if(!iso) return "";
+  try{
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York",
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+      hour12: false
+    }).format(new Date(iso));
+  }catch(e){
+    return iso;
+  }
+}
+
 function toggle(id){
   const el = $(id);
   el.style.display = (el.style.display === "none" || !el.style.display) ? "block" : "none";
@@ -620,12 +634,15 @@ async function showDetail(id){
   const issue = data.issue;
   const proposals = data.proposals || [];
 
+  const container = document.createElement("div");
+
+  // --- Header ---
   const top = document.createElement("div");
   top.innerHTML = `
     <div class="proposalTop">
       <div class="proposalMeta">
         <span class="badge">${escapeHtml(issue.status)}</span>
-        <span class="kv">created: ${escapeHtml(issue.created_at)}</span>
+        <span class="kv">created: ${escapeHtml(fmtTs(issue.created_at))}</span>
       </div>
       <div class="proposalMeta">
         <span class="kv mono">image_url: ${escapeHtml(issue.image_url || "—")}</span>
@@ -636,43 +653,66 @@ async function showDetail(id){
       <div class="small" style="margin-top:6px">${escapeHtml(issue.context || "")}</div>
     </div>
   `;
-
-  const container = document.createElement("div");
   container.appendChild(top);
 
+  // --- Proposals (newest first, ABOVE image) ---
+  container.appendChild(spacer(10));
+  const stack = document.createElement("div");
+  stack.innerHTML = `<div class="small">Proposals (newest first)</div>`;
+  container.appendChild(stack);
+
+  const stackList = document.createElement("div");
+  stackList.style.marginTop = "8px";
+  stackList.style.display = "flex";
+  stackList.style.flexDirection = "column";
+  stackList.style.gap = "10px";
+
+  const newestFirst = proposals.slice().reverse();
+  if(newestFirst.length === 0){
+    const empty = document.createElement("div");
+    empty.className = "small";
+    empty.textContent = "No proposals yet.";
+    stackList.appendChild(empty);
+  } else {
+    newestFirst.forEach((p, idx) => {
+      const el = document.createElement("div");
+      el.className = "proposal";
+      const isLatest = idx === 0;
+      el.innerHTML = `
+        <div class="proposalTop">
+          <div class="proposalMeta">
+            <span class="badge ${p.kind === "counter" ? "warn" : ""}">${escapeHtml(p.kind)}</span>
+            <span class="badge">${escapeHtml(p.agent_id)}</span>
+            <span class="kv">proposal_id: ${p.id}</span>
+            <span class="kv">time: ${escapeHtml(fmtTs(p.created_at))}</span>
+          </div>
+          ${isLatest ? `<div class="proposalMeta"><span class="badge good">latest</span></div>` : ``}
+        </div>
+        <div class="proposalMsg">${escapeHtml(p.message || "")}</div>
+        ${p.decision_json ? `<div style="margin-top:10px" class="pre">${escapeHtml(p.decision_json)}</div>` : ``}
+      `;
+      stackList.appendChild(el);
+    });
+  }
+  container.appendChild(stackList);
+
+  // --- Image (below proposals) ---
   if(issue.image_url){
     const imgUrl = issue.image_url.startsWith("http") ? issue.image_url : (api + issue.image_url);
+    const imgWrap = document.createElement("div");
+    imgWrap.style.marginTop = "12px";
+    imgWrap.innerHTML = `<div class="small">Image</div>`;
     const img = document.createElement("img");
     img.className = "img";
     img.src = imgUrl;
     img.alt = "issue image";
     img.onclick = () => openModal(imgUrl);
-    container.appendChild(spacer(10));
-    container.appendChild(img);
+    imgWrap.appendChild(spacer(8));
+    imgWrap.appendChild(img);
+    container.appendChild(imgWrap);
   }
 
-  container.appendChild(spacer(10));
-
-  const latest = proposals.length ? proposals[proposals.length - 1] : null;
-  const latestBox = document.createElement("div");
-  latestBox.className = "proposal";
-  latestBox.innerHTML = latest
-    ? `<div class="proposalTop">
-         <div class="proposalMeta">
-           <span class="badge ${latest.kind === "counter" ? "warn" : ""}">${escapeHtml(latest.kind)}</span>
-           <span class="badge">${escapeHtml(latest.agent_id)}</span>
-           <span class="kv">proposal_id: ${latest.id}</span>
-           <span class="kv">time: ${escapeHtml(latest.created_at)}</span>
-         </div>
-         <div class="proposalMeta"><span class="badge good">latest</span></div>
-       </div>
-       <div class="proposalMsg">${escapeHtml(latest.message || "")}</div>
-       <div style="margin-top:10px" class="pre">${escapeHtml(latest.decision_json || "")}</div>`
-    : `<div class="small">No proposals yet.</div>`;
-
-  container.appendChild(latestBox);
-
-  // History (collapsed by default)
+  // --- History (collapsed) ---
   const hist = document.createElement("div");
   hist.id = "detailHistory";
   hist.style.display = "none";
@@ -692,11 +732,11 @@ async function showDetail(id){
           <span class="badge ${p.kind === "counter" ? "warn" : ""}">${escapeHtml(p.kind)}</span>
           <span class="badge">${escapeHtml(p.agent_id)}</span>
           <span class="kv">proposal_id: ${p.id}</span>
-          <span class="kv">time: ${escapeHtml(p.created_at)}</span>
+          <span class="kv">time: ${escapeHtml(fmtTs(p.created_at))}</span>
         </div>
       </div>
       <div class="proposalMsg">${escapeHtml(p.message || "")}</div>
-      <div style="margin-top:10px" class="pre">${escapeHtml(p.decision_json || "")}</div>
+      ${p.decision_json ? `<div style="margin-top:10px" class="pre">${escapeHtml(p.decision_json)}</div>` : ``}
     `;
     list.appendChild(el);
   });
@@ -706,12 +746,6 @@ async function showDetail(id){
 
   $("detail").innerHTML = "";
   $("detail").appendChild(container);
-}
-
-function spacer(px){
-  const d = document.createElement("div");
-  d.style.height = px + "px";
-  return d;
 }
 
 async function loadFeed(full=false){
@@ -838,6 +872,7 @@ function startAuto(){
     await loadFeed($("olderFeed").style.display === "block");
     await loadIssues();
     if(selectedIssueId){
+　　　await showDetail(selectedIssueId); 
       await loadRolesForSelected(selectedIssueId);
     }
   }, 1500);
