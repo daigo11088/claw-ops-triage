@@ -648,7 +648,7 @@ async function showDetail(id){
     const data = await res.json();
     const issue = data.issue;
     const proposals = data.proposals || [];
-
+    const spacer = (px) => { const d = document.createElement("div"); d.style.height = px + "px"; return d; };
     const container = document.createElement("div");
 
     // --- Header ---
